@@ -1,39 +1,52 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from typing import Optional
-import uuid
+from datetime import datetime
+from uuid import uuid4
+import os
+from dotenv import load_dotenv
+
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+# Load environment variables
+load_dotenv()
+
+# Firebase setup
+cred_path = os.getenv("FIREBASE_CREDENTIALS")
+cred = credentials.Certificate(cred_path)
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 app = FastAPI()
 
-# Temporary in-memory store (we'll switch to Firestore later)
-fake_db = {}
-
+# Request model
 class ChatRequest(BaseModel):
-    session_id: Optional[str]
+    session_id: str | None = None
     message: str
 
-class ChatResponse(BaseModel):
-    session_id: str
-    response: str
+@app.post("/chat")
+def chat(req: ChatRequest):
+    # Use existing session ID or create one
+    session_id = req.session_id or str(uuid4())
 
-@app.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
-    session_id = request.session_id or str(uuid.uuid4())
-    
-    # Mock response for now (later replaced by OpenAI)
-    ai_reply = f"Echo: {request.message}"
-
-    # Save to fake_db (simulate Firestore)
-    if session_id not in fake_db:
-        fake_db[session_id] = []
-    
-    fake_db[session_id].append({
+    # 1. Store user message
+    user_doc = {
         "sender": "user",
-        "text": request.message
-    })
-    fake_db[session_id].append({
-        "sender": "ai",
-        "text": ai_reply
-    })
+        "message": req.message,
+        "timestamp": datetime.utcnow()
+    }
+    db.collection("chats").document(session_id).collection("messages").add(user_doc)
 
-    return ChatResponse(session_id=session_id, response=ai_reply)
+    # 2. Generate dummy AI response
+    ai_message = f"Echo: {req.message}"
+    ai_doc = {
+        "sender": "ai",
+        "message": ai_message,
+        "timestamp": datetime.utcnow()
+    }
+    db.collection("chats").document(session_id).collection("messages").add(ai_doc)
+
+    return {
+        "session_id": session_id,
+        "response": ai_message
+    }
