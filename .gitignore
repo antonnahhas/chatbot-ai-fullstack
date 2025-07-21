@@ -2,10 +2,12 @@
 # BACKEND (Python)
 # ----------------
 __pycache__/
+backend/__pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 *.log
+*.pyc
 
 # Virtual environments
 venv/
