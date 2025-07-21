@@ -1,2 +1,11 @@
-firebase-key.json
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Virtual environments
+venv/
 .env
+firebase-key.json
