@@ -3,6 +3,8 @@ import { ChatInput } from "./components/ui/ChatInput"
 import { MessageList, ChatMessage } from "./components/ui/MessageList"
 import { Sidebar } from "./components/ui/Sidebar"
 import { v4 as uuidv4 } from "uuid"
+import { EventSourcePolyfill } from "event-source-polyfill"
+
 
 const sessionId = uuidv4()
 
@@ -15,30 +17,45 @@ function App() {
       content: text,
       timestamp: new Date().toLocaleTimeString(),
     }
-    setMessages((prev) => [...prev, userMessage])
+    const updatedHistory = [...messages, userMessage]
+    setMessages(updatedHistory)
 
-    try {
-      const res = await fetch("http://localhost:8000/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: sessionId,
-          user_input: text,
-          history: [...messages, userMessage],
-        }),
-      })
+    const assistantMessage: ChatMessage = {
+      role: "assistant",
+      content: "",
+      timestamp: new Date().toLocaleTimeString(),
+    }
+    setMessages((prev) => [...prev, assistantMessage])
 
-      const data = await res.json()
-      const assistantMessage: ChatMessage = {
-        role: "assistant",
-        content: data.response,
-        timestamp: new Date().toLocaleTimeString(),
-      }
-      setMessages((prev) => [...prev, assistantMessage])
-    } catch (err) {
-      console.error("Error:", err)
+    const eventSource = new EventSourcePolyfill("http://localhost:8000/chat/stream", {
+      headers: { "Content-Type": "application/json" },
+      payload: JSON.stringify({
+        session_id: sessionId,
+        user_input: text,
+        history: updatedHistory,
+      }),
+    })
+
+    eventSource.onmessage = (event: MessageEvent) => {
+      setMessages((prev) =>
+        prev.map((msg, idx) =>
+          idx === prev.length - 1
+            ? { ...msg, content: msg.content + event.data }
+            : msg
+        )
+      )
+    }
+
+    eventSource.onerror = (err: Event) => {
+      console.error("SSE error:", err)
+      eventSource.close()
+    }
+
+    eventSource.onopen = () => {
+      console.log("SSE connection opened")
     }
   }
+
 
   return (
     <div className="flex h-screen">
