@@ -3,8 +3,6 @@ import { ChatInput } from "./components/ui/ChatInput"
 import { MessageList, ChatMessage } from "./components/ui/MessageList"
 import { Sidebar } from "./components/ui/Sidebar"
 import { v4 as uuidv4 } from "uuid"
-import { EventSourcePolyfill } from "event-source-polyfill"
-
 
 const sessionId = uuidv4()
 
@@ -27,20 +25,29 @@ function App() {
     }
     setMessages((prev) => [...prev, assistantMessage])
 
-    const eventSource = new EventSourcePolyfill("http://localhost:8000/chat/stream", {
-      headers: { "Content-Type": "application/json" },
-      payload: JSON.stringify({
-        session_id: sessionId,
-        user_input: text,
-        history: updatedHistory,
-      }),
-    })
+    const url = new URL("http://localhost:8000/chat/stream")
+    url.searchParams.append("session_id", sessionId)
+    url.searchParams.append("user_input", text)
+
+    const eventSource = new EventSource(url.toString())
+
+    eventSource.onopen = () => {
+      console.log("✅ SSE connection opened")
+    }
 
     eventSource.onmessage = (event: MessageEvent) => {
+      const token = event.data
+      if (token === "[DONE]") {
+        console.log("✅ SSE completed")
+        eventSource.close()
+        return
+      }
+
+      // Append token to last assistant message
       setMessages((prev) =>
         prev.map((msg, idx) =>
           idx === prev.length - 1
-            ? { ...msg, content: msg.content + event.data }
+            ? { ...msg, content: msg.content + token }
             : msg
         )
       )
@@ -50,12 +57,7 @@ function App() {
       console.error("SSE error:", err)
       eventSource.close()
     }
-
-    eventSource.onopen = () => {
-      console.log("SSE connection opened")
-    }
   }
-
 
   return (
     <div className="flex h-screen">
