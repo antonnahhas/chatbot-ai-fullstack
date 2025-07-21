@@ -1,52 +1,30 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
-from datetime import datetime
-from uuid import uuid4
-import os
-from dotenv import load_dotenv
 
-import firebase_admin
-from firebase_admin import credentials, firestore
+from openai_client import generate_chat_completion
+from chat_storage import store_message, get_chat_history
 
-# Load environment variables
-load_dotenv()
-
-# Firebase setup
-cred_path = os.getenv("FIREBASE_CREDENTIALS")
-cred = credentials.Certificate(cred_path)
-firebase_admin.initialize_app(cred)
-db = firestore.client()
 
 app = FastAPI()
-
-# Request model
 class ChatRequest(BaseModel):
-    session_id: str | None = None
-    message: str
+    session_id: str
+    user_input: str
 
 @app.post("/chat")
-def chat(req: ChatRequest):
-    # Use existing session ID or create one
-    session_id = req.session_id or str(uuid4())
+def chat_endpoint(payload: ChatRequest):
+    session_id = payload.session_id
+    user_input = payload.user_input
 
-    # 1. Store user message
-    user_doc = {
-        "sender": "user",
-        "message": req.message,
-        "timestamp": datetime.utcnow()
-    }
-    db.collection("chats").document(session_id).collection("messages").add(user_doc)
+    # Store user message
+    store_message(session_id, "user", user_input)
 
-    # 2. Generate dummy AI response
-    ai_message = f"Echo: {req.message}"
-    ai_doc = {
-        "sender": "ai",
-        "message": ai_message,
-        "timestamp": datetime.utcnow()
-    }
-    db.collection("chats").document(session_id).collection("messages").add(ai_doc)
+    # Fetch full history
+    history = get_chat_history(session_id)
 
-    return {
-        "session_id": session_id,
-        "response": ai_message
-    }
+    # Call OpenAI API
+    assistant_reply = generate_chat_completion(history)
+
+    # Store assistant reply
+    store_message(session_id, "assistant", assistant_reply)
+
+    return {"reply": assistant_reply}
