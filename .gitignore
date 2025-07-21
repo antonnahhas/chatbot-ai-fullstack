@@ -1,0 +1,45 @@
+# ----------------
+# BACKEND (Python)
+# ----------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+
+# Virtual environments
+venv/
+backend/venv/
+
+# Environment and secrets
+.env
+backend/.env
+firebase-key.json
+backend/firebase-key.json
+
+# ------------------
+# FRONTEND (React)
+# ------------------
+# dependencies
+node_modules/
+frontend/node_modules/
+.pnp/
+.pnp.js
+
+# testing
+coverage/
+
+# production
+build/
+frontend/build/
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
