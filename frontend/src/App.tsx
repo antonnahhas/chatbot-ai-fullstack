@@ -1,22 +1,50 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { ChatInput } from "./components/ui/ChatInput"
 import { MessageList, ChatMessage } from "./components/ui/MessageList"
 import { Sidebar } from "./components/ui/Sidebar"
-import { v4 as uuidv4 } from "uuid"
-
-const sessionId = uuidv4()
 
 function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+
+  // Load messages when session changes
+  useEffect(() => {
+    if (currentSessionId) {
+      loadChatHistory(currentSessionId)
+    } else {
+      setMessages([])
+    }
+  }, [currentSessionId])
+
+  const loadChatHistory = async (sessionId: string) => {
+    try {
+      const res = await fetch(`http://localhost:8000/chats/${sessionId}/messages`)
+      if (res.ok) {
+        const data = await res.json()
+        const formattedMessages: ChatMessage[] = data.messages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date().toLocaleTimeString(), // You might want to store actual timestamps
+        }))
+        setMessages(formattedMessages)
+      }
+    } catch (error) {
+      console.error("Failed to load chat history:", error)
+    }
+  }
 
   const handleSend = async (text: string) => {
+    if (!currentSessionId) {
+      console.error("No session selected")
+      return
+    }
+
     const userMessage: ChatMessage = {
       role: "user",
       content: text,
       timestamp: new Date().toLocaleTimeString(),
     }
-    const updatedHistory = [...messages, userMessage]
-    setMessages(updatedHistory)
+    setMessages(prev => [...prev, userMessage])
 
     const assistantMessage: ChatMessage = {
       role: "assistant",
@@ -26,7 +54,7 @@ function App() {
     setMessages((prev) => [...prev, assistantMessage])
 
     const url = new URL("http://localhost:8000/chat/stream")
-    url.searchParams.append("session_id", sessionId)
+    url.searchParams.append("session_id", currentSessionId)
     url.searchParams.append("user_input", text)
 
     const eventSource = new EventSource(url.toString())
@@ -40,6 +68,7 @@ function App() {
       if (token === "[DONE]") {
         console.log("✅ SSE completed")
         eventSource.close()
+        // Optionally refresh the sidebar to update chat titles
         return
       }
 
@@ -59,12 +88,33 @@ function App() {
     }
   }
 
+  const handleSelectSession = (id: string) => {
+    setCurrentSessionId(id)
+  }
+
+  const handleNewChat = (id: string) => {
+    setCurrentSessionId(id)
+    setMessages([])
+  }
+
+  const handleDeleteChat = (id: string) => {
+    if (id === currentSessionId) {
+      setCurrentSessionId(null)
+      setMessages([])
+    }
+  }
+
   return (
     <div className="flex h-screen">
-      <Sidebar />
+      <Sidebar
+        currentSessionId={currentSessionId}
+        onSelect={handleSelectSession}
+        onNewChat={handleNewChat}
+        onDelete={handleDeleteChat}
+      />
       <main className="flex flex-col flex-1 bg-white">
         <MessageList messages={messages} />
-        <ChatInput onSend={handleSend} />
+        <ChatInput onSend={handleSend} disabled={!currentSessionId} />
       </main>
     </div>
   )

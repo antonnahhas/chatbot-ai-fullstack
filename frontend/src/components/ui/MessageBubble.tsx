@@ -1,13 +1,19 @@
 import React from "react"
 
-interface MessageBubbleProps {
+interface ChatMessage {
   role: "user" | "assistant"
   content: string
-  timestamp?: string
+  timestamp: string
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp }) => {
+interface MessageBubbleProps {
+  message: ChatMessage
+}
+
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+  const { role, content, timestamp } = message
   const isUser = role === "user"
+  
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} my-2`}>
       <div
