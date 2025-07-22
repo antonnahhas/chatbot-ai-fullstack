@@ -6,7 +6,7 @@ import { Sidebar } from "./components/ui/Sidebar"
 function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   // Load messages when session changes
   useEffect(() => {
@@ -93,9 +93,24 @@ function App() {
     setCurrentSessionId(id)
   }
 
-  const handleNewChat = (id: string) => {
-    setCurrentSessionId(id)
-    setMessages([])
+  const handleNewChat = async (id: string) => {
+    if (!id) {
+      // Create a new chat if no ID provided
+      try {
+        const res = await fetch("http://localhost:8000/chats", {
+          method: "POST",
+        })
+        const data = await res.json()
+        setCurrentSessionId(data.session_id)
+        setMessages([])
+      } catch (error) {
+        console.error("Failed to create new chat:", error)
+      }
+    } else {
+      // Use the provided ID
+      setCurrentSessionId(id)
+      setMessages([])
+    }
   }
 
   const handleDeleteChat = (id: string) => {
@@ -107,13 +122,40 @@ function App() {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900">
-      <Sidebar
-        currentSessionId={currentSessionId}
-        onSelect={handleSelectSession}
-        onNewChat={handleNewChat}
-        onDelete={handleDeleteChat}
-      />
+      {/* Sidebar */}
+      <div className={`${isSidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 overflow-hidden`}>
+        <Sidebar
+          currentSessionId={currentSessionId}
+          onSelect={handleSelectSession}
+          onNewChat={handleNewChat}
+          onDelete={handleDeleteChat}
+        />
+      </div>
+      
       <main className="flex flex-col flex-1 relative overflow-hidden">
+        {/* Toggle Sidebar Button */}
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="absolute top-4 left-4 z-20 p-2 bg-white/10 backdrop-blur-lg rounded-lg hover:bg-white/20 transition-all group"
+          title={`${isSidebarOpen ? 'Hide' : 'Show'} sidebar (Ctrl+B)`}
+        >
+          <svg 
+            className="w-6 h-6 text-white" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            {isSidebarOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+          <span className="absolute left-full ml-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            {isSidebarOpen ? 'Hide' : 'Show'} sidebar (Ctrl+B)
+          </span>
+        </button>
+        
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
@@ -122,7 +164,14 @@ function App() {
         </div>
         
         <MessageList messages={messages} />
-        <ChatInput onSend={handleSend} disabled={!currentSessionId} />
+        <ChatInput 
+          onSend={handleSend} 
+          disabled={!currentSessionId}
+          onNewChat={() => {
+            // Create new chat directly
+            handleNewChat("")
+          }}
+        />
       </main>
     </div>
   )

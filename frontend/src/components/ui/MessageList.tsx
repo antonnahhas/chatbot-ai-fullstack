@@ -15,7 +15,7 @@ interface MessageListProps {
 
 export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
   return (
-    <div className="flex-1 overflow-y-auto p-4 relative z-10">
+    <div className="flex-1 overflow-y-auto p-4 pt-20 relative z-10">
       {messages.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full animate-fade-in">
           <div className="relative group">

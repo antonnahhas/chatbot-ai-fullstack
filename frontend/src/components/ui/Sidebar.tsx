@@ -43,15 +43,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [])
 
   const handleNewChat = async () => {
-    const res = await fetch("http://localhost:8000/chats", {
+    try {
+      const res = await fetch("http://localhost:8000/chats", {
         method: "POST",
-    })
-    const data = await res.json()
-
-    await fetchSessions() 
-
-    onNewChat(data.session_id)
+      })
+      const data = await res.json()
+      
+      await fetchSessions()
+      onNewChat(data.session_id)
+    } catch (error) {
+      console.error("Failed to create new chat:", error)
     }
+  }
 
   const handleDelete = async (id: string) => {
     await fetch(`http://localhost:8000/chats/${id}`, {
@@ -92,6 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Button 
             onClick={handleNewChat} 
             className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white py-3 px-4 rounded-xl transition-all transform hover:scale-105 shadow-lg group"
+            data-new-chat-btn
           >
             <PlusIcon className="h-5 w-5 group-hover:rotate-90 transition-transform" />
             <span className="font-medium">New Chat</span>
