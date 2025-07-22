@@ -47,12 +47,10 @@ class TestChatEndpoints:
         response = client.get("/chat/stream?user_input=Hello")
         assert response.status_code == 422
     
-    @pytest.mark.asyncio
-    @pytest.mark.asyncio
     @patch('services.firebase_service.firebase_service.store_message')
     @patch('services.firebase_service.firebase_service.get_chat_history')
     @patch('services.openai_service.openai_service.stream_chat_completion')
-    async def test_chat_stream_success(
+    def test_chat_stream_success(
         self, 
         mock_stream_completion, 
         mock_get_history, 
@@ -64,6 +62,7 @@ class TestChatEndpoints:
             {"role": "user", "content": "Hello"}
         ]
         
+        # Create a proper async generator mock
         async def mock_generator():
             yield "Hello"
             yield " there!"
@@ -79,11 +78,10 @@ class TestChatEndpoints:
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
     
-    @pytest.mark.asyncio
     @patch('services.firebase_service.firebase_service.store_message')
     @patch('services.firebase_service.firebase_service.get_chat_history')
     @patch('services.openai_service.openai_service.stream_chat_completion')
-    async def test_chat_stream_error_handling(
+    def test_chat_stream_error_handling(
         self, 
         mock_stream_completion, 
         mock_get_history, 
@@ -93,10 +91,12 @@ class TestChatEndpoints:
         # Setup mocks
         mock_get_history.return_value = []
         
-        async def mock_generator():
+        # Create a proper async generator that raises an exception
+        async def mock_error_generator():
+            yield "Starting..."
             raise Exception("OpenAI API error")
         
-        mock_stream_completion.return_value = mock_generator()
+        mock_stream_completion.return_value = mock_error_generator()
         
         # Make request
         response = client.get(
