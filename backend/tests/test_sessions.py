@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from main import app
+from services.auth_service import auth_service
 import uuid
 
 client = TestClient(app)
@@ -15,7 +16,25 @@ client = TestClient(app)
 class TestSessionEndpoints:
     """Test suite for session management endpoints."""
     
-    @patch('services.firebase_service.firebase_service.list_sessions')
+    @pytest.fixture(autouse=True)
+    def setup_auth_override(self):
+        """Override the auth dependency for all tests in this class."""
+        def mock_get_current_user():
+            return "test-user-123"
+        
+        def mock_get_current_user_optional():
+            return "test-user-123"
+        
+        # Override the dependencies
+        app.dependency_overrides[auth_service.get_current_user] = mock_get_current_user
+        app.dependency_overrides[auth_service.get_current_user_optional] = mock_get_current_user_optional
+        
+        yield
+        
+        # Clean up after test
+        app.dependency_overrides.clear()
+    
+    @patch('services.firebase_service.firebase_service.list_user_sessions')
     def test_get_all_sessions_success(self, mock_list_sessions):
         """Test successful retrieval of all sessions."""
         # Setup mock
@@ -34,8 +53,10 @@ class TestSessionEndpoints:
         assert len(data["sessions"]) == 2
         assert data["sessions"][0]["id"] == "123"
         assert data["sessions"][0]["title"] == "Test Chat 1"
+        # Verify the service was called with the mocked user ID
+        mock_list_sessions.assert_called_once_with("test-user-123")
     
-    @patch('services.firebase_service.firebase_service.list_sessions')
+    @patch('services.firebase_service.firebase_service.list_user_sessions')
     def test_get_all_sessions_empty(self, mock_list_sessions):
         """Test retrieval when no sessions exist."""
         # Setup mock
@@ -50,7 +71,7 @@ class TestSessionEndpoints:
         assert "sessions" in data
         assert len(data["sessions"]) == 0
     
-    @patch('services.firebase_service.firebase_service.list_sessions')
+    @patch('services.firebase_service.firebase_service.list_user_sessions')
     def test_get_all_sessions_error(self, mock_list_sessions):
         """Test error handling when fetching sessions fails."""
         # Setup mock to raise exception
@@ -78,7 +99,8 @@ class TestSessionEndpoints:
         data = response.json()
         assert "session_id" in data
         assert data["session_id"] == test_id
-        assert mock_create_session.called
+        # Verify the service was called with the user_id parameter
+        mock_create_session.assert_called_once_with(user_id="test-user-123")
     
     @patch('services.firebase_service.firebase_service.create_session')
     def test_create_chat_error(self, mock_create_session):
@@ -164,6 +186,20 @@ class TestSessionEndpoints:
         # Assertions
         assert response.status_code == 500
         assert "Failed to delete session" in response.json()["detail"]
+
+
+class TestSessionEndpointsUnauthenticated:
+    """Test suite for unauthenticated access to session endpoints."""
+    
+    def test_get_all_sessions_unauthorized(self):
+        """Test that unauthenticated requests are rejected."""
+        response = client.get("/chats")
+        assert response.status_code == 401
+    
+    def test_create_chat_unauthorized(self):
+        """Test that unauthenticated requests are rejected."""
+        response = client.post("/chats")
+        assert response.status_code == 401
 
 
 @pytest.fixture
