@@ -47,16 +47,36 @@ async def chat_stream(session_id: str, user_input: str):
 # GET all sessions
 @router.get("/chats")
 def get_all_sessions():
-    return list_sessions()
+    sessions = list_sessions()
+    # Ensure consistent data structure
+    return {
+        "sessions": [
+            {
+                "id": session.get("session_id", session.get("id")),
+                "title": session.get("title", "Untitled Chat")
+            }
+            for session in sessions
+        ]
+    }
 
 # POST to create a new session
 @router.post("/chats")
 def create_chat():
     session_id = str(uuid4())
     db.collection("chats").document(session_id).set({
-        "created_at": firestore.SERVER_TIMESTAMP  # <-- Add this line
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "title": "New Chat"  # Default title
     })
     return {"session_id": session_id}
+
+# GET messages for a specific session
+@router.get("/chats/{session_id}/messages")
+def get_session_messages(session_id: str):
+    try:
+        messages = get_chat_history(session_id)
+        return {"messages": messages}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # DELETE session by ID
 @router.delete("/chats/{session_id}")

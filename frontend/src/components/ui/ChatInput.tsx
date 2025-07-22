@@ -1,32 +1,42 @@
-// src/components/ui/ChatInput.tsx
-import React, { useState } from "react"
-import { Button } from "./Button"
+// Add this to your ChatInput.tsx component
+
+import { useState } from "react"
 
 interface ChatInputProps {
-  onSend: (message: string) => void
+  onSend: (text: string) => void
+  disabled?: boolean
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSend }) => {
-  const [message, setMessage] = useState("")
+export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
+  const [input, setInput] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (message.trim()) {
-      onSend(message.trim())
-      setMessage("")
+    if (input.trim() && !disabled) {
+      onSend(input)
+      setInput("")
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2 p-4 border-t border-gray-200 bg-white">
-      <input
-        type="text"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type a message..."
-        className="flex-1 px-4 py-2 border rounded shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      <Button type="submit">Send</Button>
+    <form onSubmit={handleSubmit} className="p-4 border-t">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={disabled ? "Select or create a chat to start" : "Type a message..."}
+          className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={disabled}
+        />
+        <button
+          type="submit"
+          disabled={disabled || !input.trim()}
+          className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          Send
+        </button>
+      </div>
     </form>
   )
 }
