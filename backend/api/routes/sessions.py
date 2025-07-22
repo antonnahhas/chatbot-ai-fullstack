@@ -1,11 +1,12 @@
 # api/routes/sessions.py
 """
-Session management API routes.
+Session management API routes with optional authentication.
 """
 
-from fastapi import APIRouter, HTTPException, status
-from typing import List, Dict
+from fastapi import APIRouter, HTTPException, status, Depends
+from typing import List, Dict, Optional
 from services.firebase_service import firebase_service
+from services.auth_service import auth_service
 from utils.constants import (
     ERROR_FETCH_SESSIONS,
     ERROR_CREATE_CHAT,
@@ -22,28 +23,16 @@ router = APIRouter(prefix="/chats", tags=["sessions"])
 
 
 @router.get("")
-async def get_all_sessions() -> Dict[str, List[Dict[str, str]]]:
+async def get_all_sessions(
+    user_id: str = Depends(auth_service.get_current_user)
+) -> Dict[str, List[Dict[str, str]]]:
     """
-    Get all chat sessions.
-    
-    Returns:
-        Dictionary with 'sessions' key containing list of sessions
-        
-    Raises:
-        HTTPException: If fetching sessions fails
-        
-    Example Response:
-        {
-            "sessions": [
-                {"id": "123", "title": "Hello chat"},
-                {"id": "456", "title": "Another chat"}
-            ]
-        }
+    Get all chat sessions for the authenticated user.
     """
     try:
-        sessions = firebase_service.list_sessions()
+        # Get sessions for authenticated user only
+        sessions = firebase_service.list_user_sessions(user_id)
         
-        # Format response with consistent structure
         return {
             "sessions": [
                 {
@@ -55,7 +44,7 @@ async def get_all_sessions() -> Dict[str, List[Dict[str, str]]]:
         }
         
     except Exception as e:
-        logger.error(f"Error fetching sessions: {str(e)}")
+        logger.error(f"Error fetching sessions for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ERROR_FETCH_SESSIONS
@@ -63,27 +52,20 @@ async def get_all_sessions() -> Dict[str, List[Dict[str, str]]]:
 
 
 @router.post("")
-async def create_chat() -> Dict[str, str]:
+async def create_chat(
+    user_id: str = Depends(auth_service.get_current_user)
+) -> Dict[str, str]:
     """
-    Create a new chat session.
-    
-    Returns:
-        Dictionary with the new session_id
-        
-    Raises:
-        HTTPException: If session creation fails
-        
-    Example Response:
-        {"session_id": "123e4567-e89b-12d3-a456-426614174000"}
+    Create a new chat session for the authenticated user.
     """
     try:
-        session_id = firebase_service.create_session()
-        logger.info(LOG_SESSION_CREATED.format(session_id=session_id))
+        session_id = firebase_service.create_session(user_id=user_id)
+        logger.info(f"Created chat {session_id} for user {user_id}")
         
         return {"session_id": session_id}
         
     except Exception as e:
-        logger.error(f"Error creating chat: {str(e)}")
+        logger.error(f"Error creating chat for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ERROR_CREATE_CHAT
@@ -91,26 +73,12 @@ async def create_chat() -> Dict[str, str]:
 
 
 @router.get("/{session_id}/messages")
-async def get_session_messages(session_id: str) -> Dict[str, List[Dict[str, str]]]:
+async def get_session_messages(
+    session_id: str,
+    user_id: Optional[str] = Depends(auth_service.get_current_user_optional)
+) -> Dict[str, List[Dict[str, str]]]:
     """
     Get all messages for a specific chat session.
-    
-    Args:
-        session_id: The chat session ID (path parameter)
-        
-    Returns:
-        Dictionary with 'messages' key containing list of messages
-        
-    Raises:
-        HTTPException: If fetching messages fails
-        
-    Example Response:
-        {
-            "messages": [
-                {"role": "user", "content": "Hello"},
-                {"role": "assistant", "content": "Hi there!"}
-            ]
-        }
     """
     try:
         messages = firebase_service.get_chat_history(session_id)
@@ -125,21 +93,12 @@ async def get_session_messages(session_id: str) -> Dict[str, List[Dict[str, str]
 
 
 @router.delete("/{session_id}")
-async def delete_chat_session(session_id: str) -> Dict[str, str]:
+async def delete_chat_session(
+    session_id: str,
+    user_id: Optional[str] = Depends(auth_service.get_current_user_optional)
+) -> Dict[str, str]:
     """
     Delete a chat session and all its messages.
-    
-    Args:
-        session_id: The chat session ID to delete (path parameter)
-        
-    Returns:
-        Dictionary with success message
-        
-    Raises:
-        HTTPException: If deletion fails
-        
-    Example Response:
-        {"detail": "Session deleted successfully"}
     """
     try:
         firebase_service.delete_session(session_id)

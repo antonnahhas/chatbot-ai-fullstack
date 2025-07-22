@@ -148,23 +148,67 @@ class FirebaseService:
         logger.info(LOG_SESSIONS_FOUND.format(count=len(sessions)))
         return sessions
     
-    def create_session(self, session_id: Optional[str] = None) -> str:
+    def list_user_sessions(self, user_id: str) -> List[Dict[str, str]]:
+        """
+        List all chat sessions for a specific user.
+        
+        Args:
+            user_id: The user's ID
+            
+        Returns:
+            List of session dictionaries with 'session_id' and 'title'
+        """
+        sessions_ref = self.db.collection("chats")
+        sessions = []
+        
+        try:
+            # Simple query - just filter by user_id without ordering
+            docs = sessions_ref.where("user_id", "==", user_id).stream()
+            
+            for doc in docs:
+                data = doc.to_dict()
+                sessions.append({
+                    "session_id": doc.id,
+                    "title": data.get("title", UNTITLED_CHAT),
+                    "created_at": data.get("created_at")
+                })
+            
+            # Sort in Python instead of Firebase
+            sessions.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+            
+            # Remove created_at from response
+            for session in sessions:
+                session.pop('created_at', None)
+                
+        except Exception as e:
+            logger.warning(f"Error querying user sessions: {e}")
+        
+        logger.info(f"Found {len(sessions)} sessions for user {user_id}")
+        return sessions
+    
+    def create_session(self, session_id: Optional[str] = None, user_id: Optional[str] = None) -> str:
         """
         Create a new chat session.
         
         Args:
             session_id: Optional session ID, generates UUID if not provided
+            user_id: Optional user ID for session ownership
             
         Returns:
             The session ID
         """
         if not session_id:
             session_id = str(uuid.uuid4())
-            
-        self.db.collection("chats").document(session_id).set({
+        
+        session_data = {
             "created_at": firestore.SERVER_TIMESTAMP,
             "title": DEFAULT_CHAT_TITLE
-        })
+        }
+        
+        if user_id:
+            session_data["user_id"] = user_id
+            
+        self.db.collection("chats").document(session_id).set(session_data)
         
         return session_id
     

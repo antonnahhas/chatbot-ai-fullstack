@@ -5,9 +5,11 @@ Chat-related API routes.
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
+from typing import Optional
 from models.chat import ChatRequest
 from services.firebase_service import firebase_service
 from services.openai_service import openai_service
+from services.auth_service import auth_service
 from utils.constants import (
     ERROR_SESSION_REQUIRED,
     LOG_CHAT_REQUEST,
@@ -45,23 +47,30 @@ async def chat_endpoint(payload: ChatRequest):
 
 
 @router.get("/stream")
-async def chat_stream(session_id: str, user_input: str):
+async def chat_stream(
+    session_id: str, 
+    user_input: str,
+    token: Optional[str] = None
+):
     """
     Stream chat responses using Server-Sent Events (SSE).
     
     Args:
         session_id: The chat session ID (query parameter)
         user_input: The user's message (query parameter)
+        token: JWT token for authentication (query parameter for SSE)
         
     Returns:
         StreamingResponse with SSE formatted data
-        
-    Raises:
-        HTTPException: If session_id or user_input is missing
-        
-    Example:
-        GET /chat/stream?session_id=123&user_input=Hello
     """
+    # Verify token if provided (for SSE authentication)
+    user_id = None
+    if token:
+        try:
+            payload = auth_service.verify_token(token)
+            user_id = payload.get("sub")
+        except:
+            pass  # Continue without auth for backward compatibility
     # Validate inputs
     if not session_id or not user_input:
         raise HTTPException(

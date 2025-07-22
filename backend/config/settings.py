@@ -29,6 +29,9 @@ class Settings:
     # Firebase Settings  
     firebase_key_path = "firebase-key.json"
     
+    # Auth Settings
+    secret_key = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")
+    
     # Logging
     log_level = "INFO"
 
