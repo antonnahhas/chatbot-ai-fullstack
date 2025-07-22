@@ -34,9 +34,15 @@ async def chat_stream(session_id: str, user_input: str):
     history = get_chat_history(session_id)
 
     async def event_generator():
+        assistant_message = ""
         try:
             async for chunk in stream_chat_completion(history):
+                assistant_message += chunk
                 yield f"data: {chunk}\n\n"
+            
+            # Store the complete assistant message after streaming
+            store_message(session_id, "assistant", assistant_message)
+            yield "data: [DONE]\n\n"
         except Exception as e:
             import traceback
             traceback.print_exc()  

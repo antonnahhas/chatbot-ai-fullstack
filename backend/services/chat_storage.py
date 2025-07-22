@@ -23,7 +23,11 @@ def store_message(session_id: str, role: Literal["user", "assistant"], content: 
             chat_data = chat_doc.to_dict()
             # Only update title if it's still the default
             if chat_data.get("title") in ["New Chat", None]:
-                title = " ".join(content.strip().split()[:5]) + "..."
+                # Take first 4 words of the message
+                words = content.strip().split()[:4]
+                title = " ".join(words)
+                if len(words) == 4 and len(content.strip().split()) > 4:
+                    title += "..."
                 chat_ref.update({"title": title})
 
 def get_chat_history(session_id: str) -> list[dict]:

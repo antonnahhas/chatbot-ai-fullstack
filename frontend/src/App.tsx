@@ -68,6 +68,7 @@ function App() {
       if (token === "[DONE]") {
         console.log("✅ SSE completed")
         eventSource.close()
+        // Optionally refresh the sidebar to update chat titles
         return
       }
 
