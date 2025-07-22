@@ -14,6 +14,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const { role, content, timestamp } = message
   const isUser = role === "user"
   
+  // Remove seconds from timestamp (assumes format like "HH:MM:SS")
+  const formatTimestamp = (timestamp: string) => {
+    if (!timestamp) return ""
+    return timestamp.substring(0, 4) // HH:MM display 
+  }
+  
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} my-2 animate-slide-in`}>
       <div className="relative max-w-xs lg:max-w-md">
@@ -32,7 +38,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
           {timestamp && (
             <span className={`text-xs block mt-2 ${isUser ? "text-teal-100" : "text-gray-500"}`}>
-              {timestamp}
+              {formatTimestamp(timestamp)}
             </span>
           )}
         </div>
