@@ -1,5 +1,5 @@
 // App.tsx
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { ChatInput } from "./components/chat/ChatInput"
 import { MessageList } from "./components/chat/MessageList"
 import { Sidebar } from "./components/sidebar/Sidebar"
@@ -7,6 +7,8 @@ import { AnimatedBackground } from "./components/ui/AnimatedBackground"
 import { ToggleSidebarButton } from "./components/ui/ToggleSidebarButton"
 import { useChat } from "./hooks/useChat"
 import { useSidebar } from "./hooks/useSidebar"
+import { authService } from "./services/auth"
+import { api } from "./services/api"
 
 function App() {
   const {
@@ -19,18 +21,37 @@ function App() {
   } = useChat()
   
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebar()
+  const [isAuthReady, setIsAuthReady] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
-  // Initialize chat on app load
+  // Initialize authentication
   useEffect(() => {
+    const initAuth = async () => {
+      try {
+        await authService.initializeAuth()
+        setIsAuthReady(true)
+      } catch (error) {
+        console.error("Failed to initialize auth:", error)
+        setAuthError("Failed to initialize authentication")
+      }
+    }
+    
+    initAuth()
+  }, [])
+
+  // Initialize chat after auth is ready
+  useEffect(() => {
+    if (!isAuthReady) return
+    
     const initializeChat = async () => {
       try {
-        const res = await fetch("http://localhost:8000/chats")
-        const data = await res.json()
+        const data = await api.getAllChats()
         
         if (data.sessions && data.sessions.length > 0) {
           setCurrentSessionId(data.sessions[0].id)
         } else {
-          await createNewChat()
+          const newChat = await api.createChat()
+          setCurrentSessionId(newChat.session_id)
         }
       } catch (error) {
         console.error("Failed to initialize chat:", error)
@@ -38,7 +59,7 @@ function App() {
     }
     
     initializeChat()
-  }, [])
+  }, [isAuthReady]) // Remove createNewChat and setCurrentSessionId from dependencies
 
   const handleNewChat = async (id: string) => {
     if (!id) {
@@ -54,6 +75,24 @@ function App() {
       setCurrentSessionId(null)
       setMessages([])
     }
+  }
+
+  // Show loading state while auth is initializing
+  if (!isAuthReady && !authError) {
+    return (
+      <div className="flex h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900 items-center justify-center">
+        <div className="text-white text-xl">Initializing...</div>
+      </div>
+    )
+  }
+
+  // Show error if auth failed
+  if (authError) {
+    return (
+      <div className="flex h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900 items-center justify-center">
+        <div className="text-red-400 text-xl">{authError}</div>
+      </div>
+    )
   }
 
   return (
