@@ -65,7 +65,7 @@ async def chat_stream(session_id: str, user_input: str):
     # Validate inputs
     if not session_id or not user_input:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=ERROR_SESSION_REQUIRED
         )
     
