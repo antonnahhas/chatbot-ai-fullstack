@@ -65,6 +65,25 @@ def get_all_sessions():
         ]
     }
 
+# Debug endpoint to check all chats in database
+@router.get("/chats/debug")
+def debug_all_sessions():
+    sessions_ref = db.collection("chats")
+    all_docs = sessions_ref.stream()
+    sessions = []
+    for doc in all_docs:
+        data = doc.to_dict()
+        sessions.append({
+            "id": doc.id,
+            "data": data,
+            "has_created_at": "created_at" in data,
+            "has_title": "title" in data
+        })
+    return {
+        "total_count": len(sessions),
+        "sessions": sessions
+    }
+
 # POST to create a new session
 @router.post("/chats")
 def create_chat():

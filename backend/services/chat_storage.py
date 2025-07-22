@@ -44,15 +44,29 @@ def get_chat_history(session_id: str) -> list[dict]:
 
 def list_sessions():
     sessions_ref = db.collection("chats")
-    # Order by creation time, most recent first
-    docs = sessions_ref.order_by("created_at", direction=firestore.Query.DESCENDING).stream()
     sessions = []
-    for doc in docs:
-        data = doc.to_dict()
-        sessions.append({
-            "session_id": doc.id,
-            "title": data.get("title", "Untitled Chat")
-        })
+    
+    try:
+        # First try to get ordered results
+        docs = sessions_ref.order_by("created_at", direction=firestore.Query.DESCENDING).stream()
+        for doc in docs:
+            data = doc.to_dict()
+            sessions.append({
+                "session_id": doc.id,
+                "title": data.get("title", "Untitled Chat")
+            })
+    except Exception as e:
+        # If ordering fails (e.g., some docs missing created_at), get all docs
+        print(f"Warning: Could not order by created_at: {e}")
+        docs = sessions_ref.stream()
+        for doc in docs:
+            data = doc.to_dict()
+            sessions.append({
+                "session_id": doc.id,
+                "title": data.get("title", "Untitled Chat")
+            })
+    
+    print(f"Found {len(sessions)} chat sessions")  # Debug log
     return sessions
 
 def create_session():
