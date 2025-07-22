@@ -17,7 +17,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   // Remove seconds from timestamp (assumes format like "HH:MM:SS")
   const formatTimestamp = (timestamp: string) => {
     if (!timestamp) return ""
-    return timestamp.substring(0, 4) // HH:MM display 
+    return timestamp 
   }
   
   return (
