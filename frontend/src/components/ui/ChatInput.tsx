@@ -1,12 +1,12 @@
 import React, { useState } from "react"
-import { Button } from "./Button"
 
 interface ChatInputProps {
   onSend: (text: string) => void
   disabled?: boolean
+  onNewChat?: () => void
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false, onNewChat }) => {
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
 
@@ -16,6 +16,28 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }
       onSend(input)
       setInput("")
     }
+  }
+
+  // Show "New Chat" button when disabled
+  if (disabled) {
+    return (
+      <div className="p-4 relative z-10">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-6 shadow-2xl text-center">
+          <p className="text-gray-300 mb-4">No chat selected. Start a new conversation!</p>
+          <button
+            onClick={onNewChat}
+            className="px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all transform hover:scale-105 shadow-lg font-medium"
+          >
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Start New Chat
+            </div>
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -30,9 +52,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }
                 setInput(e.target.value)
                 setIsTyping(e.target.value.length > 0)
               }}
-              placeholder={disabled ? "Select or create a chat to start" : "Type your message..."}
-              className="w-full px-5 py-3 bg-transparent text-white placeholder-gray-400 focus:outline-none disabled:opacity-50"
-              disabled={disabled}
+              placeholder="Type your message..."
+              className="w-full px-5 py-3 bg-transparent text-white placeholder-gray-400 focus:outline-none"
+              autoFocus
             />
             {isTyping && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -44,15 +66,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }
               </div>
             )}
           </div>
-          <Button
+          <button
             type="submit"
-            disabled={disabled || !input.trim()}
+            disabled={!input.trim()}
             className="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl hover:from-teal-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 shadow-lg"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
-          </Button>
+          </button>
         </div>
       </div>
     </form>
