@@ -9,6 +9,6 @@ def get_firebase_app():
     try:
         return get_app()
     except ValueError:
-        cred_path = os.path.join(os.path.dirname(__file__), "../firebase-key.json")
+        cred_path = os.path.join(os.path.dirname(__file__), "../config/firebase-key.json")
         cred = credentials.Certificate(cred_path)
         return initialize_app(cred)
