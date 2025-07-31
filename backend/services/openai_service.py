@@ -62,37 +62,6 @@ class OpenAIService:
             error_msg = f"{ERROR_OPENAI_STREAMING}: {str(e)}"
             logger.error(error_msg)
             yield f"Error: {str(e)}"
-    
-    async def get_chat_completion(
-        self, 
-        history: List[Dict[str, str]]
-    ) -> str:
-        """
-        Get a non-streaming chat completion from OpenAI.
-        
-        Args:
-            history: List of message dictionaries with 'role' and 'content'
-            
-        Returns:
-            The complete assistant response
-            
-        Raises:
-            Exception: If OpenAI API call fails
-        """
-        try:
-            response = await openai.ChatCompletion.acreate(
-                model=self.model,
-                messages=history,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            error_msg = f"{ERROR_OPENAI_STREAMING}: {str(e)}"
-            logger.error(error_msg)
-            raise
 
 
 # Create singleton instance
