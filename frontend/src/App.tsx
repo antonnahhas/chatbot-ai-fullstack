@@ -23,6 +23,11 @@ function App() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebar()
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  
+  // Set the document title
+  useEffect(() => {
+    document.title = "SummerAI";
+  }, []);
 
   // Initialize authentication
   useEffect(() => {

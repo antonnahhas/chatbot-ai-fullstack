@@ -37,7 +37,6 @@ async def chat_endpoint(payload: ChatRequest):
         This is mainly for testing. Production should use /stream endpoint
     """
     firebase_service.store_message(payload.session_id, "user", payload.user_input)
-    history = firebase_service.get_chat_history(payload.session_id)
     
     # For test endpoint, just return a simple message
     assistant_reply = "This endpoint is for testing. Please use /chat/stream for real-time responses."
@@ -64,11 +63,9 @@ async def chat_stream(
         StreamingResponse with SSE formatted data
     """
     # Verify token if provided (for SSE authentication)
-    user_id = None
     if token:
         try:
             payload = auth_service.verify_token(token)
-            user_id = payload.get("sub")
         except:
             pass  # Continue without auth for backward compatibility
     # Validate inputs

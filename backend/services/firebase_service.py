@@ -106,48 +106,6 @@ class FirebaseService:
             for doc in docs
         ]
     
-    def list_sessions(self) -> List[Dict[str, str]]:
-        """
-        List all chat sessions.
-        
-        Returns:
-            List of session dictionaries with 'session_id' and 'title'
-            
-        Note:
-            Falls back to unordered listing if ordering by created_at fails
-        """
-        sessions_ref = self.db.collection("chats")
-        sessions = []
-        
-        try:
-            # Try ordered query first
-            docs = sessions_ref.order_by(
-                "created_at", 
-                direction=firestore.Query.DESCENDING
-            ).stream()
-            
-            for doc in docs:
-                data = doc.to_dict()
-                sessions.append({
-                    "session_id": doc.id,
-                    "title": data.get("title", UNTITLED_CHAT)
-                })
-                
-        except Exception as e:
-            # Fallback to unordered if some docs missing created_at
-            logger.warning(f"Could not order by created_at: {e}")
-            docs = sessions_ref.stream()
-            
-            for doc in docs:
-                data = doc.to_dict()
-                sessions.append({
-                    "session_id": doc.id,
-                    "title": data.get("title", UNTITLED_CHAT)
-                })
-        
-        logger.info(LOG_SESSIONS_FOUND.format(count=len(sessions)))
-        return sessions
-    
     def list_user_sessions(self, user_id: str) -> List[Dict[str, str]]:
         """
         List all chat sessions for a specific user.
