@@ -1,7 +1,6 @@
 // src/services/api.ts
 import { authService } from './auth'
-
-const API_BASE_URL = "http://localhost:8000"
+import { API_BASE_URL } from '../utils/constants'
 
 async function fetchWithAuthRetry(input: RequestInfo, init: RequestInit = {}) {
   // Add auth headers

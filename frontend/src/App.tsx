@@ -1,5 +1,5 @@
 // App.tsx
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { ChatInput } from "./components/chat/ChatInput"
 import { MessageList } from "./components/chat/MessageList"
 import { Sidebar } from "./components/sidebar/Sidebar"
