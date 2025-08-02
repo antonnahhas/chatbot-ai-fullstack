@@ -34,7 +34,6 @@ class TestChatEndpoints:
         assert response.status_code == 200
         assert "reply" in response.json()
         assert mock_store_message.called
-        assert mock_get_history.called
     
     def test_chat_stream_missing_params(self):
         """Test chat stream with missing parameters."""

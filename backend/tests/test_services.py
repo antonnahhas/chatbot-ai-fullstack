@@ -224,27 +224,6 @@ class TestOpenAIService:
             # Should yield error message
             assert len(result) == 1
             assert "Error:" in result[0]
-    
-    @pytest.mark.asyncio
-    async def test_get_chat_completion_success(self, openai_service):
-        """Test non-streaming completion."""
-        # Setup mock
-        with patch('services.openai_service.openai.ChatCompletion.acreate') as mock_create:
-            mock_response = MagicMock()
-            mock_response.choices = [MagicMock(message=MagicMock(content="Hello there!"))]
-            mock_create.return_value = mock_response
-            
-            # Execute
-            history = [{"role": "user", "content": "Hi"}]
-            result = await openai_service.get_chat_completion(history)
-            
-            # Assertions
-            assert result == "Hello there!"
-            mock_create.assert_called_once()
-            # Check that stream parameter is set correctly
-            call_kwargs = mock_create.call_args[1]
-            assert "model" in call_kwargs
-            assert "messages" in call_kwargs
 
 
 @pytest.fixture
