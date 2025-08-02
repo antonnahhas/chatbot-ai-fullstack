@@ -14,7 +14,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const { role, content, timestamp } = message
   const isUser = role === "user"
   
-  // Remove seconds from timestamp (assumes format like "HH:MM:SS")
   const formatTimestamp = (timestamp: string) => {
     if (!timestamp) return ""
     return timestamp 

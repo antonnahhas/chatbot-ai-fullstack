@@ -1,5 +1,5 @@
 // App.tsx
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { ChatInput } from "./components/chat/ChatInput"
 import { MessageList } from "./components/chat/MessageList"
 import { Sidebar } from "./components/sidebar/Sidebar"
@@ -23,6 +23,11 @@ function App() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebar()
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  
+  // Set the document title
+  useEffect(() => {
+    document.title = "SummerAI";
+  }, []);
 
   // Initialize authentication
   useEffect(() => {
@@ -59,7 +64,7 @@ function App() {
     }
     
     initializeChat()
-  }, [isAuthReady]) // Remove createNewChat and setCurrentSessionId from dependencies
+  }, [isAuthReady]) 
 
   const handleNewChat = async (id: string) => {
     if (!id) {

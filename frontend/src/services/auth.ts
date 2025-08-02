@@ -1,6 +1,4 @@
-// src/services/auth.ts
-const API_BASE_URL = "http://localhost:8000"
-
+import { API_BASE_URL } from '../utils/constants'
 interface AuthResponse {
   user_id: string
   access_token: string
