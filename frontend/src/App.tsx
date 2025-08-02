@@ -64,7 +64,7 @@ function App() {
     }
     
     initializeChat()
-  }, [isAuthReady]) // Remove createNewChat and setCurrentSessionId from dependencies
+  }, [isAuthReady]) 
 
   const handleNewChat = async (id: string) => {
     if (!id) {
