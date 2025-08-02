@@ -5,6 +5,32 @@ import { ChatSession, SidebarProps } from "../../types"
 import { api } from "../../services/api"
 import { SidebarHeader } from "./SidebarHeader"
 import { ChatList } from "./ChatList"
+import { ErrorDisplay } from "../ui/ErrorDisplay"
+
+// Inline loader component for buttons
+const InlineLoader: React.FC<{ className?: string }> = ({ className = "" }) => {
+  return (
+    <div className={`inline-flex items-center gap-2 ${className}`}>
+      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+      <span className="text-sm">Loading...</span>
+    </div>
+  )
+}
+
+// Small loading spinner
+const LoadingSpinner: React.FC<{ text?: string }> = ({ text }) => {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-8">
+      <div className="relative">
+        <div className="w-6 h-6 border-2 border-white/20 border-t-teal-400 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse"></div>
+        </div>
+      </div>
+      {text && <p className="text-gray-300 text-xs animate-pulse">{text}</p>}
+    </div>
+  )
+}
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentSessionId,
@@ -13,8 +39,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDelete,
 }) => {
   const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
+  const [isCreatingChat, setIsCreatingChat] = useState(false)
+  const [sidebarError, setSidebarError] = useState<string | null>(null)
 
   const fetchSessions = async () => {
+    setIsLoadingSessions(true)
+    setSidebarError(null)
     try {
       const data = await api.getAllChats()
       if (Array.isArray(data.sessions)) {
@@ -25,7 +56,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }
     } catch (error) {
       console.error("Failed to fetch sessions:", error)
+      setSidebarError("Failed to load conversations")
       setSessions([])
+    } finally {
+      setIsLoadingSessions(false)
     }
   }
 
@@ -34,12 +68,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [])
 
   const handleNewChat = async () => {
+    setIsCreatingChat(true)
+    setSidebarError(null)
     try {
-      const data = await api.createChat()
       await fetchSessions()
-      onNewChat(data.session_id)
+      onNewChat()
     } catch (error) {
       console.error("Failed to create new chat:", error)
+      setSidebarError("Failed to create new chat")
+    } finally {
+      setIsCreatingChat(false)
     }
   }
 
@@ -47,12 +85,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     try {
       await api.deleteChat(id)
       await fetchSessions()
-      if (id === currentSessionId) {
-        onNewChat("")
-      }
       onDelete(id)
     } catch (error) {
       console.error("Failed to delete chat:", error)
+      setSidebarError("Failed to delete chat")
     }
   }
 
@@ -67,11 +103,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Conversations</h2>
           <button 
             onClick={handleNewChat} 
-            className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white py-3 px-4 rounded-xl transition-all transform hover:scale-105 shadow-lg group"
+            disabled={isCreatingChat}
+            className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white py-3 px-4 rounded-xl transition-all transform hover:scale-105 shadow-lg group disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             data-new-chat-btn
           >
-            <PlusIcon className="h-5 w-5 group-hover:rotate-90 transition-transform" />
-            <span className="font-medium">New Chat</span>
+            {isCreatingChat ? (
+              <InlineLoader />
+            ) : (
+              <>
+                <PlusIcon className="h-5 w-5 group-hover:rotate-90 transition-transform" />
+                <span className="font-medium">New Chat</span>
+              </>
+            )}
           </button>
         </div>
         
@@ -81,12 +124,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-xs text-gray-500">{sessions.length}</span>
           </div>
           
-          <ChatList
-            sessions={sessions}
-            currentSessionId={currentSessionId}
-            onSelect={onSelect}
-            onDelete={handleDelete}
-          />
+          {sidebarError && (
+            <ErrorDisplay 
+              error={sidebarError}
+              type="inline"
+              onRetry={fetchSessions}
+              onDismiss={() => setSidebarError(null)}
+              className="mb-4"
+            />
+          )}
+          
+          {isLoadingSessions ? (
+            <LoadingSpinner text="Loading chats..." />
+          ) : (
+            <ChatList
+              sessions={sessions}
+              currentSessionId={currentSessionId}
+              onSelect={onSelect}
+              onDelete={handleDelete}
+            />
+          )}
         </div>
       </div>
     </div>
