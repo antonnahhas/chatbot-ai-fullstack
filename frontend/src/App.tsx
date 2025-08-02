@@ -1,10 +1,12 @@
 // App.tsx
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { ChatInput } from "./components/chat/ChatInput"
 import { MessageList } from "./components/chat/MessageList"
 import { Sidebar } from "./components/sidebar/Sidebar"
 import { AnimatedBackground } from "./components/ui/AnimatedBackground"
 import { ToggleSidebarButton } from "./components/ui/ToggleSidebarButton"
+import { LoadingSpinner } from "./components/ui/LoadingSpinner"
+import { ErrorDisplay, Toast } from "./components/ui/ErrorDisplay"
 import { useChat } from "./hooks/useChat"
 import { useSidebar } from "./hooks/useSidebar"
 import { authService } from "./services/auth"
@@ -17,12 +19,21 @@ function App() {
     setCurrentSessionId,
     sendMessage,
     createNewChat,
-    setMessages
+    setMessages,
+    isLoadingHistory,
+    isSending,
+    isWaitingForResponse,
+    chatError,
+    retryLoadHistory,
+    retrySendMessage
   } = useChat()
   
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebar()
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [isLoadingChats, setIsLoadingChats] = useState(false)
+  const [appError, setAppError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: "error" | "success" | "info" } | null>(null)
   
   // Set the document title
   useEffect(() => {
@@ -37,7 +48,7 @@ function App() {
         setIsAuthReady(true)
       } catch (error) {
         console.error("Failed to initialize auth:", error)
-        setAuthError("Failed to initialize authentication")
+        setAuthError("Failed to initialize authentication. Please refresh the page.")
       }
     }
     
@@ -49,36 +60,104 @@ function App() {
     if (!isAuthReady) return
     
     const initializeChat = async () => {
+      setIsLoadingChats(true)
       try {
         const data = await api.getAllChats()
         
         if (data.sessions && data.sessions.length > 0) {
           setCurrentSessionId(data.sessions[0].id)
         } else {
-          const newChat = await api.createChat()
-          setCurrentSessionId(newChat.session_id)
+          // Don't automatically create a chat on page load
+          // Let the user create one when they're ready
+          setCurrentSessionId(null)
         }
       } catch (error) {
         console.error("Failed to initialize chat:", error)
+        setAppError("Failed to load your conversations. Please check your connection and try again.")
+      } finally {
+        setIsLoadingChats(false)
       }
     }
     
     initializeChat()
-  }, [isAuthReady]) 
+  }, [isAuthReady, setCurrentSessionId])
 
-  const handleNewChat = async (id: string) => {
-    if (!id) {
-      await createNewChat()
-    } else {
-      setCurrentSessionId(id)
+  const handleNewChat = async () => {
+    try {
+      // Creating a new chat from sidebar
+      const data = await api.createChat()
+      setCurrentSessionId(data.session_id)
       setMessages([])
+      setToast({ message: "New chat created successfully!", type: "success" })
+      return data.session_id
+    } catch (error) {
+      console.error("Failed to create new chat:", error)
+      setToast({ message: "Failed to create new chat. Please try again.", type: "error" })
+      return null
     }
   }
 
-  const handleDeleteChat = (id: string) => {
-    if (id === currentSessionId) {
-      setCurrentSessionId(null)
-      setMessages([])
+  const handleSelectChat = (id: string) => {
+    // Selecting an existing chat
+    setCurrentSessionId(id)
+    setMessages([])
+  }
+
+  const handleDeleteChat = async (id: string) => {
+    try {
+      // Delete the chat first
+      await api.deleteChat(id)
+      
+      // Get updated sessions list
+      const data = await api.getAllChats()
+      const remainingSessions = data.sessions || []
+      
+      if (id === currentSessionId) {
+        if (remainingSessions.length > 0) {
+          // Select the first remaining session
+          setCurrentSessionId(remainingSessions[0].id)
+        } else {
+          // No sessions left, clear current session
+          setCurrentSessionId(null)
+          setMessages([])
+        }
+      }
+      
+      setToast({ message: "Chat deleted successfully", type: "info" })
+    } catch (error) {
+      console.error("Error handling chat deletion:", error)
+      setToast({ message: "Failed to delete chat. Please try again.", type: "error" })
+    }
+  }
+
+  const retryInitialization = async () => {
+    setAppError(null)
+    setIsLoadingChats(true)
+    try {
+      const data = await api.getAllChats()
+      
+      if (data.sessions && data.sessions.length > 0) {
+        setCurrentSessionId(data.sessions[0].id)
+      } else {
+        // Don't automatically create a chat, just clear current session
+        setCurrentSessionId(null)
+      }
+      setToast({ message: "Successfully reconnected!", type: "success" })
+    } catch (error) {
+      console.error("Failed to initialize chat:", error)
+      setAppError("Failed to load your conversations. Please check your connection and try again.")
+    } finally {
+      setIsLoadingChats(false)
+    }
+  }
+
+  const handleRetryError = () => {
+    if (chatError && chatError.includes("send")) {
+      // This is a send error, retry sending
+      retrySendMessage()
+    } else {
+      // This is a history loading error, retry loading
+      retryLoadHistory()
     }
   }
 
@@ -86,7 +165,7 @@ function App() {
   if (!isAuthReady && !authError) {
     return (
       <div className="flex h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900 items-center justify-center">
-        <div className="text-white text-xl">Initializing...</div>
+        <LoadingSpinner size="lg" text="Initializing authentication..." />
       </div>
     )
   }
@@ -95,17 +174,50 @@ function App() {
   if (authError) {
     return (
       <div className="flex h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900 items-center justify-center">
-        <div className="text-red-400 text-xl">{authError}</div>
+        <ErrorDisplay 
+          error={authError}
+          type="modal"
+          onRetry={() => window.location.reload()}
+          onDismiss={() => setAuthError(null)}
+        />
+      </div>
+    )
+  }
+
+  // Show loading during chat initialization
+  if (isLoadingChats) {
+    return (
+      <div className="flex h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900">
+        <LoadingSpinner size="lg" text="Loading your conversations..." className="m-auto" />
       </div>
     )
   }
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900">
+      {/* Show app-level errors */}
+      {appError && (
+        <ErrorDisplay 
+          error={appError}
+          type="modal"
+          onRetry={retryInitialization}
+          onDismiss={() => setAppError(null)}
+        />
+      )}
+
+      {/* Toast notifications */}
+      {toast && (
+        <Toast 
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className={`${isSidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 overflow-hidden`}>
         <Sidebar
           currentSessionId={currentSessionId}
-          onSelect={setCurrentSessionId}
+          onSelect={handleSelectChat}
           onNewChat={handleNewChat}
           onDelete={handleDeleteChat}
         />
@@ -117,11 +229,19 @@ function App() {
           onClick={toggleSidebar} 
         />
         <AnimatedBackground />
-        <MessageList messages={messages} />
+        <MessageList 
+          messages={messages} 
+          isLoading={isLoadingHistory}
+          isWaitingForResponse={isWaitingForResponse}
+          error={chatError}
+          onRetryError={handleRetryError}
+        />
         <ChatInput 
           onSend={sendMessage} 
           disabled={!currentSessionId}
-          onNewChat={createNewChat}
+          onNewChat={handleNewChat}
+          isSending={isSending}
+          isWaitingForResponse={isWaitingForResponse}
         />
       </main>
     </div>

@@ -8,6 +8,8 @@ export interface ChatMessage {
 export interface ChatSession {
   id: string
   title: string
+  created_at: string
+  updated_at: string
 }
 
 export interface ChatInputProps {
@@ -19,6 +21,6 @@ export interface ChatInputProps {
 export interface SidebarProps {
   currentSessionId: string | null
   onSelect: (id: string) => void
-  onNewChat: (id: string) => void
-  onDelete: (id: string) => void
+  onNewChat: () => Promise<string | null>  
+  onDelete: (id: string) => Promise<void>  
 }
